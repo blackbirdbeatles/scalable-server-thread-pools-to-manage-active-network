@@ -1,4 +1,4 @@
-package cs455.scaling.client;
+package cs455.scaling.server;
 
 
 /**
@@ -6,6 +6,7 @@ package cs455.scaling.client;
  */
 public class HashPacket {
     public byte[] value;
-    public HashPacket(){
+    public HashPacket(byte[] value){
+        this.value = value;
     }
 }

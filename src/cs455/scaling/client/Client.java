@@ -110,6 +110,7 @@ public class Client {
 
                     } catch (IOException ioe){
                         System.out.println("Fail to read data");
+                        System.exit(-1);
                     }
                     statistics.incrementMessageReceived();
                     // Now I have got a complete hashcode
