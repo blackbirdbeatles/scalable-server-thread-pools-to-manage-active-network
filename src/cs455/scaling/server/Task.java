@@ -1,5 +1,6 @@
 package cs455.scaling.server;
 
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 
 /**
@@ -8,13 +9,15 @@ import java.nio.channels.SocketChannel;
 public class Task {
 
     public String type;
-    public String object;
+    public byte[] object;
     public SocketChannel channel;
+    public SelectionKey key;
 
 
-    public Task(String type, String object, SocketChannel channel){
+    public Task(String type, byte[] object, SocketChannel channel, SelectionKey key){
         this.type = type;
         this.object = object;
         this.channel = channel;
+        this.key = key;
     }
 }

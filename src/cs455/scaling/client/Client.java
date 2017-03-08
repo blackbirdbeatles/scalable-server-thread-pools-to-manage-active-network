@@ -114,10 +114,17 @@ public class Client {
                     }
                     statistics.incrementMessageReceived();
                     // Now I have got a complete hashcode
-                    String hashCode = buf.toString();
+                    buf.flip();
+                    byte[] hc= new byte[40];
+                    buf.get(hc);
+                    String hashCode = new String(hc);
+//                    System.out.println("received hash: "+ hashCode);
                     synchronized (hashList) {
-                        if (hashList.contains(buf)) {
-                            hashList.remove(buf);
+                        if (hashList.contains(hashCode)) {
+                            hashList.remove(hashCode);
+                        }
+                        else{
+                            System.out.println("Wrong hashcode");
                         }
                     }
                 }

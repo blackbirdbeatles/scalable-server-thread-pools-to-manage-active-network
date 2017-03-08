@@ -49,9 +49,11 @@ public class PacketSender extends Thread {
 
             ByteBuffer buf = ByteBuffer.allocate(packetSize);
             buf.put(packet.value);
+//            System.out.println("send p: "+ new String(packet.value));
             buf.flip();
             //Firstly, convert buf to buffer array, then compute its hashcode, and add hash to hashList
             String hashCode = SHA1FromBytes(packet.value);
+//            System.out.println("ready to send: " + hashCode);
             synchronized (hashList){
                 hashList.add(hashCode);
             }

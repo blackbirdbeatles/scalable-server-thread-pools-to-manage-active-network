@@ -36,13 +36,15 @@ public class Server {
 
         //create server socket channel & selector & ThreadPoolManager, register it to the selector
         Server server = new Server(port);
+        Statistics statistics = new Statistics();
+        statistics.start();
         ServerSocketChannel serverSocketChannel;
         Selector selector;
         try {
             selector = Selector.open();
             serverSocketChannel = ServerSocketChannel.open();
 
-            ThreadPoolManager threadPoolManager = new ThreadPoolManager(poolSize);
+            ThreadPoolManager threadPoolManager = new ThreadPoolManager(poolSize, statistics);
             threadPoolManager.start();
 
             serverSocketChannel.socket().bind(new InetSocketAddress(port));
@@ -69,13 +71,17 @@ public class Server {
                 while (iterator.hasNext()) {
                     SelectionKey key = (SelectionKey)iterator.next();
                     if (key.isAcceptable()){
-                        SocketChannel socketChannel = serverSocketChannel.accept();
-                        socketChannel.register(selector, SelectionKey.OP_READ);
+                            SocketChannel socketChannel = serverSocketChannel.accept();
+                            socketChannel.configureBlocking(false);
+                            socketChannel.register(selector, SelectionKey.OP_READ,"");
+                            statistics.incrementConnection();
                     } else
-                    if (key.isReadable()){
-                        Task task = new Task("read",null,(SocketChannel) key.channel());
-                        threadPoolManager.addToWorkToDo(task);
-                    }
+                    if (key.attachment().equals(""))
+                        if (key.isReadable()) {
+                            key.attach("already");
+                            Task task = new Task("read", null, (SocketChannel) key.channel(),key);
+                            threadPoolManager.addToWorkToDo(task);
+                        }
                     iterator.remove();
                 }
             }

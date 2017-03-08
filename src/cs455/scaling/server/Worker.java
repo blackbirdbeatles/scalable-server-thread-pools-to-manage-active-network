@@ -4,6 +4,7 @@ package cs455.scaling.server;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -17,12 +18,14 @@ public class Worker extends Thread{
     private ThreadPoolManager parent;
     private final int packetSize = 8192 ;
     public Task task = null;
-    public boolean isWorking;
+    private Statistics statistics;
+    //public boolean isWorking;
 
     private void readTask(){
 
         //Parse the task
         SocketChannel socketChannel= task.channel;
+        SelectionKey key = task.key;
 
         //do the read task
         ByteBuffer buf = ByteBuffer.allocate(packetSize);
@@ -31,6 +34,7 @@ public class Worker extends Thread{
             try {
                 bytesRead = socketChannel.read(buf);
                 if (bytesRead == -1){
+                    statistics.decrementConnection();
                     System.out.println("Connection has lost. Exit");
                     System.exit(-1);
                 }
@@ -41,13 +45,17 @@ public class Worker extends Thread{
         }
         // Now I have got a complete packet, put it into the workToDo list again to do the compute SHA-1 task
         String type = "hash";
-        String originalPacket = buf.toString();
-        Task nextTask = new Task(type, originalPacket, socketChannel);
+        byte[] op = new byte[packetSize];
+        buf.flip();
+        buf.get(op);
+        Task nextTask = new Task(type, op, socketChannel,null);
         parent.addToWorkToDo(nextTask);
+        key.attach("");
+        statistics.incrementMessageReceived();
 
 
         //declare available
-        isWorking = false;
+        //isWorking = false;
         parent.addToReadyWorker(this);
 
     }
@@ -55,11 +63,11 @@ public class Worker extends Thread{
     private void writeTask(){
 
         //Parse the task
-        String hashedPacket = task.object;
+        byte[] hashedPacket = task.object;
         SocketChannel channel= task.channel;
 
         //send hashedPacket back to client
-        HashPacket backPacket = new HashPacket(hashedPacket.getBytes());
+        HashPacket backPacket = new HashPacket(hashedPacket);
 
         ByteBuffer buf = ByteBuffer.allocate(40);
         buf.put(backPacket.value);
@@ -73,9 +81,10 @@ public class Worker extends Thread{
             System.out.println("Fail to write buf");
             System.exit(-1);
         }
+        statistics.incrementMessageSent();
 
         //declare available
-        isWorking = false;
+        //isWorking = false;
         parent.addToReadyWorker(this);
     }
 
@@ -96,32 +105,43 @@ public class Worker extends Thread{
     }
     private void hashTask(){
         //Parse the task
-        String originalPacket = task.object;
+       byte[] originalPacket = task.object;
         SocketChannel socketChannel= task.channel;
 
         //do the hash task
-        String hashedPacket = SHA1FromBytes(originalPacket.getBytes());
+        String hashedPacket = SHA1FromBytes(originalPacket);
 
         // Now I have got a hashed packet, put it into the workToDo list again to do the sending(writing) task
         String type = "write";
-        Task nextTask = new Task(type, hashedPacket, socketChannel);
+        Task nextTask = new Task(type, hashedPacket.getBytes(), socketChannel,null);
         parent.addToWorkToDo(nextTask);
 
+
         //declare available
-        isWorking = false;
+        //isWorking = false;
         parent.addToReadyWorker(this);
+
 
     }
 
 
-    public Worker(ThreadPoolManager parent){
+    public Worker(ThreadPoolManager parent,Statistics statistics){
         this.parent = parent;
-        this.isWorking = false;
+        this.statistics =statistics;
+     //  this.isWorking = false;
     }
     public void run(){
         parent.addToReadyWorker(this);
         while (true){
-            if (isWorking){
+            synchronized (this) {
+                while (parent.contains(this)) {
+                    try {
+                        this.wait();
+                    } catch (InterruptedException ie) {
+                        System.out.println("wait is interrupted in " + Thread.currentThread());
+                        System.exit(-1);
+                    }
+                }
                 if (task.type.equals("read")) {
                     readTask();
                 } else if (task.type.equals("write")) {
@@ -130,14 +150,8 @@ public class Worker extends Thread{
                     hashTask();
                 }
             }
-            else{
-                try {
-                    wait();
-                } catch (InterruptedException ie) {
-                    System.out.println("wait is interrupted in " + Thread.currentThread());
-                    System.exit(-1);
-                }
-            }
+
+
         }
     }
 }
