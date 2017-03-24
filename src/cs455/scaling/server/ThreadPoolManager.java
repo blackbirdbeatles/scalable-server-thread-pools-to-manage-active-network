@@ -64,7 +64,6 @@ public class ThreadPoolManager extends Thread {
         while (true){
             Task task;
             synchronized (workToDo) {
-                //把if变成了while 虽然没想清楚为什么
                 while (workToDo.isEmpty()) {
                     try {
                         workToDo.wait();
@@ -73,8 +72,7 @@ public class ThreadPoolManager extends Thread {
                         System.exit(-1);
                     }
                 }
-                task = workToDo.getFirst();
-                deleteFromWorkToDo(task);
+                task = workToDo.poll();
             }
             Worker worker;
             synchronized (readyWorkers) {
@@ -86,13 +84,15 @@ public class ThreadPoolManager extends Thread {
                         System.exit(-1);
                     }
                 }
-                worker = readyWorkers.getFirst();
-                deleteFromReadyWorker(worker);
-            }
+                worker = readyWorkers.poll();
+
                 synchronized (worker) {
                     worker.task = task;
                     worker.notify();
                 }
+            }
+
+
 
 
 

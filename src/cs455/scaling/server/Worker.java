@@ -35,8 +35,9 @@ public class Worker extends Thread{
                 bytesRead = socketChannel.read(buf);
                 if (bytesRead == -1){
                     statistics.decrementConnection();
-                    System.out.println("Connection has lost. Exit");
-                    System.exit(-1);
+                    socketChannel.close();
+                    System.out.println("Connection has lost. Terminate connection. ");
+                    break;
                 }
             } catch (IOException ioe){
                 System.out.println("Fail to read data");
@@ -48,14 +49,15 @@ public class Worker extends Thread{
         byte[] op = new byte[packetSize];
         buf.flip();
         buf.get(op);
-        Task nextTask = new Task(type, op, socketChannel,null);
+        Task nextTask = new Task(type, op, socketChannel,key);
         parent.addToWorkToDo(nextTask);
-        key.attach("");
+
         statistics.incrementMessageReceived();
 
 
         //declare available
         //isWorking = false;
+        task = null;
         parent.addToReadyWorker(this);
 
     }
@@ -67,10 +69,9 @@ public class Worker extends Thread{
         SocketChannel channel= task.channel;
 
         //send hashedPacket back to client
-        HashPacket backPacket = new HashPacket(hashedPacket);
 
         ByteBuffer buf = ByteBuffer.allocate(40);
-        buf.put(backPacket.value);
+        buf.put(hashedPacket);
         buf.flip();
 
         //send back the hashed packet
@@ -79,12 +80,22 @@ public class Worker extends Thread{
                  channel.write(buf);
         } catch (IOException ioe){
             System.out.println("Fail to write buf");
-            System.exit(-1);
+            statistics.decrementConnection();
+            try {
+                channel.close();
+            } catch (IOException ioe2){
+                System.out.println("IOE in close channel");
+            }
         }
         statistics.incrementMessageSent();
 
+        synchronized (task.key) {
+            task.key.attach("");
+        }
+
         //declare available
         //isWorking = false;
+        task = null;
         parent.addToReadyWorker(this);
     }
 
@@ -113,12 +124,13 @@ public class Worker extends Thread{
 
         // Now I have got a hashed packet, put it into the workToDo list again to do the sending(writing) task
         String type = "write";
-        Task nextTask = new Task(type, hashedPacket.getBytes(), socketChannel,null);
+        Task nextTask = new Task(type, hashedPacket.getBytes(), socketChannel,task.key);
         parent.addToWorkToDo(nextTask);
 
 
         //declare available
         //isWorking = false;
+        task = null;
         parent.addToReadyWorker(this);
 
 
@@ -134,7 +146,7 @@ public class Worker extends Thread{
         parent.addToReadyWorker(this);
         while (true){
             synchronized (this) {
-                while (parent.contains(this)) {
+                while (task==null) {
                     try {
                         this.wait();
                     } catch (InterruptedException ie) {

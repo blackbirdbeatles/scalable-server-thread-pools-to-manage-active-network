@@ -3,6 +3,7 @@ package cs455.scaling.server;
 import cs455.scaling.client.PacketSender;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
@@ -48,6 +49,8 @@ public class Server {
             threadPoolManager.start();
 
             serverSocketChannel.socket().bind(new InetSocketAddress(port));
+            String IP = InetAddress.getLocalHost().getHostAddress();
+            System.out.println("Host " + IP + " is listening on port " + port);
             serverSocketChannel.configureBlocking(false);
 
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
@@ -75,13 +78,16 @@ public class Server {
                             socketChannel.configureBlocking(false);
                             socketChannel.register(selector, SelectionKey.OP_READ,"");
                             statistics.incrementConnection();
-                    } else
-                    if (key.attachment().equals(""))
-                        if (key.isReadable()) {
-                            key.attach("already");
-                            Task task = new Task("read", null, (SocketChannel) key.channel(),key);
-                            threadPoolManager.addToWorkToDo(task);
+                    } else {
+                        synchronized (key) {
+                            if (key.attachment().equals(""))
+                                if (key.isReadable()) {
+                                    key.attach("already");
+                                    Task task = new Task("read", null, (SocketChannel) key.channel(), key);
+                                    threadPoolManager.addToWorkToDo(task);
+                                }
                         }
+                    }
                     iterator.remove();
                 }
             }

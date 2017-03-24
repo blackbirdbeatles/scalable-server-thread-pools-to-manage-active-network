@@ -46,7 +46,10 @@ public class Statistics extends Thread {
             String timeStamp = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss").format(new Date());
             synchronized (messageReceived){
                 synchronized (messageSent) {
-                    System.out.println(timeStamp + " Current Server Throughput: " + String.valueOf((messageSent + messageReceived) * 0.1) + " messages/s, " + " Active Client Connections: " + connection);
+                    String throughput = String.format("%.2f", (messageSent + messageReceived) * 0.1);
+                    synchronized (connection) {
+                        System.out.println(timeStamp + " Current Server Throughput: " + throughput + " messages/s, " + " Active Client Connections: " + connection);
+                    }
                     messageReceived = 0;
                     messageSent = 0;
                 }

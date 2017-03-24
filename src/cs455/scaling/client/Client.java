@@ -30,7 +30,7 @@ public class Client {
         }
         catch (IOException ioe){
             System.out.println("Fail to open socket.");
-            return;
+            System.exit(-1);
         }
 
 
@@ -55,7 +55,7 @@ public class Client {
         }
         catch (IOException ioe){
             System.out.println("Fail to set socketChannel non-blocking");
-            return;
+            System.exit(-1);
         }
 
         //connect to Server
@@ -64,7 +64,7 @@ public class Client {
         }
         catch (IOException ioe){
             System.out.println("Fail to connect to Server");
-            return;
+            System.exit(-1);;
         }
 
 
@@ -87,7 +87,7 @@ public class Client {
                         ((SocketChannel)key.channel()).finishConnect();
                     } catch (IOException ioe) {
                         System.out.println("fail to connect to server");
-                        return;
+                        System.exit(-1);
                     }
 
                     key.interestOps(SelectionKey.OP_READ);
@@ -137,8 +137,8 @@ public class Client {
 
     public static void main(String[] arg){
         String serverHost = arg[0];
-        int serverPort;
-        int messageRate;
+        int serverPort = 0;
+        int messageRate = 0;
 
 
         //extract arguments from the prompt
@@ -148,7 +148,7 @@ public class Client {
         }
         catch (NumberFormatException nfe){
             System.out.println("wrong server port or rate.");
-            return;
+            System.exit(-1);
         }
 
 
